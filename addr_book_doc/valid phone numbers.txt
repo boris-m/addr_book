@@ -1,0 +1,11 @@
+valid phone numbers:
++7 9 500 30 5009
+8 800 666 66 66 
+666 66 66 
+
+
+def phone number
+112
+01-02-03
+
+
