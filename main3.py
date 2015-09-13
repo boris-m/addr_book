@@ -1,7 +1,8 @@
 import os
 import sqlite3
-import time
 import datetime
+import time
+from messages import Messages
 
 
 class Settings(object):
@@ -16,9 +17,11 @@ class Record(object):
         self.phone_number=None
         self.legal_phone_number=0 #sqllite have no BOOL so 0 is False
 
+
 class Application(Settings):
     def __init__(self):
         super(Application,self).__init__()
+        self.stop_flag = True
         self.db_conection = self.__init_db()
 
     def __del__(self):
@@ -48,20 +51,97 @@ class Application(Settings):
         cur.execute(query)
         print cur.fetchall()
 
-    def add_record(self,record):
+    def __db_add_record(self,record):
         query='INSERT INTO records (id, firstName, lastName ,birthday ,phone, correct_phone) \
         VALUES(NULL, "{fn}", "{ln}" , "{bd}", "{phone}" , "{cor_phone}")'.format(\
             fn = record.first_name, ln = record.last_name , bd = record.birthday ,\
             phone = record.phone_number, cor_phone = record.legal_phone_number )
+
         cur=self.db_conection.cursor()
         cur.execute(query)
         self.db_conection.commit()
 
-        print query
+    def add_record(self):
+        print Messages.add_record
+        user_input = raw_input("input record parameters, please: ")
+        #TODO remove all non alfnum symbols, check encoding
+
+        user_input = user_input.strip("     \t\n\r")
+        user_input = user_input.split(',')
+
+        if len(user_input) < 4:
+            print "you input wrong data, please try again "
+            return None
+        raw_firstname = [user_input[0]]
+        raw_lastname  = [user_input[1]]
+        raw_birthday  = [user_input[2]]
+        raw_phone     = [user_input[3]]
+        #check input is correct
+        print(raw_birthday)
+        
+    def find_record(self,query):
+        db_query='SELECT * from records where firstName like "%{q}%"'.format(q = query)
+        cur=self.db_conection.cursor()
+        cur.execute(db_query)
+        res=cur.fetchall()
+        print res
+
+    def set_record(self,id,record):
+        query='UPDATE records' \
+              ' SET id = "{uid}", firstName = "{fn}" , lastName = "{ln}" ,birthday = "{bd}"  ,' \
+              'phone = "{phone}" , correct_phone = "{cor_phone}"' \
+              ' WHERE id={uid};'.format( uid = id , fn = record.first_name, ln = record.last_name ,\
+               bd = record.birthday ,phone = record.phone_number, cor_phone = record.legal_phone_number )
+        cur=self.db_conection.cursor()
+        cur.execute(query)
+        self.db_conection.commit()
+
+    def remove_record(self,id):
+        id=int(id)
+        query='DELETE  FROM records where id={uid}'.format(uid=id)
+        cur=self.db_conection.cursor()
+        cur.execute(query)
+        self.db_conection.commit()
+
+    def execute_task(self,command):
+
+        if command=="add" or command == "a":
+            self.add_record()
+        elif command == "remove" or command == "r":
+            task.remove()
+        elif command == "change" or command == "c":
+            task.remove()
+        elif command == "find" or command == "f":
+            self.find()
+        elif command == "show_all" or command == "s":
+            task.show_all()
+        else:
+            print "no such command ({cmd})\r\n{man}".format(cmd=command, man=Messages.intro)
+
+
+    def loop(self):
+        user_input = raw_input("input command please: ")
+        self.execute_task(user_input)
+        time.sleep(1)
+
+    def run(self):
+        try:
+            print Messages.intro
+            while self.stop_flag:
+                self.loop()
+        except Exception,e:
+            print "error in program: {exc}".format(exc = e)
+        finally:
+            try:
+                print "destroing DB connection"
+                self.db_conection.close()
+            except Exception,e:
+                print "probably connection already closed"
+
+
 
     def test(self):
         self.__check_birthdays()
-
 
 def test():
     A=Application()
@@ -70,15 +150,11 @@ def test():
     rec=Record()
     rec.last_name="testlastname"
     rec.first_name="testFirstname"
-    rec.birthday="2001-09-14"
-    rec.phone_number="54326"
+    rec.birthday="2003-09-14"
+    rec.phone_number="12341243"
     rec.legal_phone_number=0
-    A.add_record(rec)
-
-    cur.execute("select * from records")
-    print cur.fetchall()
-    #A.test()
-    A.db_conection.close()
+    A.find_record("test")
+    #A.run()
 
 
 if __name__ == "__main__":
