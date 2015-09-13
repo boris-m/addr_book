@@ -18,15 +18,13 @@ class Record(object):
         self.phone_number=None
         self.legal_phone_number=0 #sqllite have no BOOL so 0 is False
 
-
     def print_record(self):
         msg="""
         id         "{uid}"
         first name "{fn}"
         last name  "{ln}"
         birthday   "{bd}"
-        phone      "{ph}"
-        """.format(
+        phone      "{ph}" """.format(
             uid = self.id,
             fn  = self.first_name,
             ln  = self.last_name,
@@ -38,7 +36,6 @@ class Record(object):
 
     def fill_record(self,data):
         try:
-            print len(data)
             self.id=data[0]
             self.first_name=data[1]
             self.last_name=data[2]
@@ -47,6 +44,7 @@ class Record(object):
             self.legal_phone_number=data[5]
         except Exception,e:
             print "can not parse record:{err}".format(err=e)
+
 
 class Application(Settings):
     def __init__(self):
@@ -63,21 +61,15 @@ class Application(Settings):
             cur = con.cursor()
             create_table_query='CREATE TABLE records (id INTEGER PRIMARY KEY, firstName VARCHAR(100), lastName VARCHAR(100) , birthday VARCHAR(10), phone INTEGER, correct_phone INTEGER )'
             cur.execute(create_table_query)
-            insert_test_record_query='INSERT INTO records (id, firstName, lastName ,birthday ,phone, correct_phone) VALUES(NULL, "asdfasdf", "12123" , "{fd}", "79500305009" , "1")'.format(fd=str(datetime.date.today()+datetime.timedelta(days=2)))
-            print insert_test_record_query
-            cur.execute(insert_test_record_query)
             con.commit()
             return con
         return sqlite3.connect(self.storage_file)
 
     def __check_birthdays(self):
         today=str(datetime.date.today())
-        print today
         future_date=str(datetime.date.today()+datetime.timedelta(days=3))
-        print future_date
         cur=self.db_conection.cursor()
         query='SELECT * FROM records WHERE birthday BETWEEN "{td}" AND "{fd}"'.format(td = today, fd = future_date)
-        print query
         cur.execute(query)
         print cur.fetchall()
 
@@ -130,7 +122,10 @@ class Application(Settings):
         cur.execute(db_query)
         res=cur.fetchall()
         print "we found {n} records:".format(n=len(res))
-        print res
+        for i in res:
+            rec=Record()
+            rec.fill_record(i)
+            rec.print_record()
 
     def _db_find_record_by_id(self,id):
         db_query='SELECT * from records where id = "{q}"'.format(q = id)
@@ -172,6 +167,16 @@ class Application(Settings):
         user_input = raw_input("please input id of record should be deleted")
         id=self._db_find_record_by_id(int(user_input))
 
+    def select_all(self):
+        db_query='SELECT * from records'
+        cur=self.db_conection.cursor()
+        cur.execute(db_query)
+        res=cur.fetchall()
+        for i in res:
+            rec=Record()
+            rec.fill_record(i)
+            rec.print_record()
+
     def execute_task(self,command):
 
         if command=="add" or command == "a":
@@ -179,11 +184,11 @@ class Application(Settings):
         elif command == "remove" or command == "r":
             self.remove_record()
         elif command == "change" or command == "c":
-            task.remove()
+            self.set_record()
         elif command == "find" or command == "f":
             self.find_record()
         elif command == "show_all" or command == "s":
-            task.show_all()
+            self.select_all()
         else:
             print "no such command ({cmd})\r\n{man}".format(cmd=command, man=Messages.intro)
 
@@ -206,8 +211,6 @@ class Application(Settings):
             except Exception,e:
                 print "probably connection already closed"
 
-
-
     def test(self):
         self.__check_birthdays()
 
@@ -224,7 +227,8 @@ def test():
     #A.find_record("test")
     A.run()
     #A._db_find_record_by_id(5)
-
+    A.select_all()
+    A.db_conection.close()
 
 if __name__ == "__main__":
     test()
