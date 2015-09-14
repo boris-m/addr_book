@@ -45,7 +45,6 @@ class Record(object):
         except Exception,e:
             print "can not parse record:{err}".format(err=e)
 
-
 class Application(Settings):
     def __init__(self):
         super(Application,self).__init__()
