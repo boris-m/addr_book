@@ -1,13 +1,22 @@
+import logging
 import os
 import sqlite3
 import datetime
 import time
 from messages import Messages
 
-
 class Settings(object):
     def __init__(self):
         self.storage_file="storage.db"
+
+class Helper():
+    def check_phone_number(self, num):
+
+
+        return True
+    def check_date_format(self, date):
+
+        return True
 
 class Record(object):
     def __init__(self):
@@ -34,7 +43,16 @@ class Record(object):
         print msg
         return msg
 
-    def fill_record(self,data):
+    def fill_record_user_input(self , args):
+        try:
+            self.first_name=args[0]
+            self.last_name=args[1]
+            self.birthday=args[2]
+            self.phone_number=args[3]
+        except Exception,e:
+            print "can not parse record:{err}".format(err=e)
+
+    def fill_record_from_db(self,data):
         try:
             self.id=data[0]
             self.first_name=data[1]
@@ -46,10 +64,13 @@ class Record(object):
             print "can not parse record:{err}".format(err=e)
 
 class Application(Settings):
+
     def __init__(self):
         super(Application,self).__init__()
         self.stop_flag = True
         self.db_conection = self.__init_db()
+        self.__helper=Helper()
+        logging.basicConfig(level = logging.DEBUG)
 
     def __del__(self):
         self.db_conection.close()
@@ -65,27 +86,43 @@ class Application(Settings):
         return sqlite3.connect(self.storage_file)
 
     def __check_birthdays(self):
-        today=str(datetime.date.today())
+        tmp_today=datetime.date.today()
+        today="1000-{m}-{d}".format( m = tmp_today.month , d =tmp_today.day )
         future_date=str(datetime.date.today()+datetime.timedelta(days=3))
         cur=self.db_conection.cursor()
         query='SELECT * FROM records WHERE birthday BETWEEN "{td}" AND "{fd}"'.format(td = today, fd = future_date)
         cur.execute(query)
-        print cur.fetchall()
+        res=cur.fetchall()
+        if cur == []:
+            print "no birthdays next 3 days "
+            return None
+        else:
+            rec=Record()
+            for i in res:
+                rec.fill_record_from_db(i)
+                try:
+                    tmp=datetime.datetime.strptime(rec.birthday, "%Y-%m-%d").date()
+                    diff=tmp.day - datetime.date.today().day
+                    if diff>0:
+                        bd="at {d} day of {m} month, {n} days left".format(d = tmp.day,m = tmp.month, n = diff)
+                    if diff == 0:
+                        bd="TODAY!"
+                    print "{fn} {ln} have birthday  {date}".format(fn=rec.first_name , ln=rec.last_name , date=bd)
+                except Exception as e:
+                    logging.error("some error in __check_birthdays: {err}".format(err = e))
+        return None
 
-    def __print_record(self,record):
-        msg="""
-        id         "{uid}"
-        first name "{fn}"
-        last name  "{ln}"
-        birthday   "{bd}"
-        phone      "{ph}"
-        """.format(
-            uid = record.id,
-            fn  = record.first_name,
-            ln  = record.last_name,
-            bd  = record.birthday,
-            ph  = record.phone_number
-        )
+    def __is_record_duplicate(self,record):
+        #TODO check another fields
+        query='select id from records where firstName = "{fn}"'.format(fn = record.first_name)
+        logging.debug(query)
+        cur=self.db_conection.cursor()
+        cur.execute(query)
+        res=cur.fetchall()
+        logging.debug(res)
+        if res != []:
+            return True
+        return False
 
     def __db_add_record(self,record):
         query='INSERT INTO records (id, firstName, lastName ,birthday ,phone, correct_phone) \
@@ -98,24 +135,56 @@ class Application(Settings):
         self.db_conection.commit()
 
     def add_record(self):
+        record=Record()
         print Messages.add_record
         user_input = raw_input("input record parameters, please: ")
-        #TODO remove all non alfnum symbols, check encoding
-
-        user_input = user_input.strip("     \t\n\r")
-        user_input = user_input.split(',')
-
-        if len(user_input) < 4:
+        try:
+            user_input = user_input.strip("     \t\n\r")
+            user_input = user_input.split(',')
+            record.fill_record_user_input(user_input)
+        except Exception as e:
+            logging.warning("user input error: {e}".format(e = e))
             print "you input wrong data, please try again "
             return None
-        raw_firstname = [user_input[0]]
-        raw_lastname  = [user_input[1]]
-        raw_birthday  = [user_input[2]]
-        raw_phone     = [user_input[3]]
-        #check input is correct
-        print(raw_birthday)
 
-    def __db_find_record(self,query):
+        if len(record.first_name)<2:
+            print "you input wrong data, first name too short, please try again "
+            return None
+
+        if len(record.last_name)<2:
+            print "you input wrong data, last name too short, please try again "
+            return None
+        if self.__is_record_duplicate(record):
+            print "you already have such record,use another first name"
+            return None
+
+        if self.__helper.check_date_format(record.birthday) != True:
+            print "you input wrong data, invalid birthday, please try again "
+            user_input = raw_input("skip birthday? (type yes or no: ")
+            if user_input is "yes":
+                record.birthday=None
+            else:
+                user_input = raw_input("input  birthday  date using YYYY-MM-DD format (for example 1974-03-27)")
+                if self.__helper.check_date_format(record.birthday) != True:
+                    print "incorrect input"
+                    return None
+
+        if self.__helper.check_phone_number(record.phone_number) != True:
+            user_input = raw_input("you input {ph} as phone number, it looks like incorrect, save this number anyway?/"
+                                   " (type yes to save, or no to go to command menu".format(ph = record.phone_number))
+            if user_input == "yes":
+                record.legal_phone_number=0
+                self.__db_add_record(record)
+                return None
+            else:
+                return None
+
+        record.legal_phone_number=0
+        self.__db_add_record(record)
+        print "record sucessfully aded"
+
+    def _db_find_record(self,query):
+        records_id=[]
         db_query='SELECT * from records where firstName like "%{q}%"'.format(q = query)
         cur=self.db_conection.cursor()
         cur.execute(db_query)
@@ -123,25 +192,29 @@ class Application(Settings):
         print "we found {n} records:".format(n=len(res))
         for i in res:
             rec=Record()
-            rec.fill_record(i)
+            rec.fill_record_from_db(i)
+            records_id.append(rec.id)
             rec.print_record()
+        return records_id
 
     def _db_find_record_by_id(self,id):
         db_query='SELECT * from records where id = "{q}"'.format(q = id)
         cur=self.db_conection.cursor()
         cur.execute(db_query)
         res=cur.fetchall()[0]
-        record=Record()
-        record.fill_record(res)
-        record.print_record()
+        if res!=[]:
+            record=Record()
+            record.fill_record_from_db(res)
+            return record
+        else:
+            return None
 
     def find_record(self):
         print Messages.find_record
         user_input = raw_input("input record parameters, please: ")
         #TODO remove all non alfnum symbols, check encoding
-
         user_input = user_input.strip("     \t\n\r")
-        self.__db_find_record(user_input)
+        return self._db_find_record(user_input)
 
     def set_record(self,id,record):
         query='UPDATE records' \
@@ -162,9 +235,23 @@ class Application(Settings):
 
     def remove_record(self):
         print Messages.remove_record_first
-        self.find_record()
+        records_id = self.find_record()
         user_input = raw_input("please input id of record should be deleted")
-        id=self._db_find_record_by_id(int(user_input))
+        id=int(user_input)
+        if id not in records_id:
+            print "no such id in find records"
+            return None
+        rec_to_delete=self._db_find_record_by_id(id)
+        allowed_id=[]
+        if rec_to_delete != None:
+            rec_to_delete.print_record()
+            print "are you really want to delete this record?"
+            user_input = raw_input("please input id of record should be deleted (input yes or no)" )
+            if user_input == "yes":
+                self.__db_remove_record(id)
+                print "record deleted"
+        else:
+            print "no such record"
 
     def select_all(self):
         db_query='SELECT * from records'
@@ -173,7 +260,7 @@ class Application(Settings):
         res=cur.fetchall()
         for i in res:
             rec=Record()
-            rec.fill_record(i)
+            rec.fill_record_from_db(i)
             rec.print_record()
 
     def execute_task(self,command):
@@ -199,19 +286,17 @@ class Application(Settings):
     def run(self):
         try:
             print Messages.intro
+            self.__check_birthdays()
             while self.stop_flag:
                 self.loop()
         except Exception,e:
             print "error in program: {exc}".format(exc = e)
         finally:
             try:
-                print "destroing DB connection"
+                logging.error("destroing DB connection")
                 self.db_conection.close()
             except Exception,e:
                 print "probably connection already closed"
-
-    def test(self):
-        self.__check_birthdays()
 
 def test():
     A=Application()
@@ -225,8 +310,10 @@ def test():
     rec.legal_phone_number=0
     #A.find_record("test")
     A.run()
+    #print dir(A)
+    #A._Application__is_record_duplicate(rec)
     #A._db_find_record_by_id(5)
-    A.select_all()
+    #A.select_all()
     A.db_conection.close()
 
 if __name__ == "__main__":

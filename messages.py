@@ -8,7 +8,7 @@ class Messages():
         change or c   - to change record """
 
 
-    add_record="""to add records input: first name, last name, birthday (dd/mm/yyyy), phone_number spaced by comma symbol
+    add_record="""to add records input: first name, last name, birthday (yyyy-mm-dd format), phone_number spaced by comma symbol
     """
     find_record="type part of first name and press enter"
 
