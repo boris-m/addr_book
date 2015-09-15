@@ -3,11 +3,7 @@ import time
 import db_helper
 from messages import Messages
 
-class Settings(object):
-    def __init__(self):
-        self.storage_file="storage.db"
-
-class Check():
+class Check(object):
     def phone_number(self, num):
 
 
