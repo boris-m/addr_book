@@ -20,7 +20,7 @@ class DbHelper(object):
             self.db_connection = con
         else:
             self.db_connection = sqlite3.connect(self.storage_file)
-        print "connrction - ok? - ",self.db_connection
+
 
     def _exec(self,query):
         cursor = self.db_connection.cursor()
@@ -98,8 +98,9 @@ class DbHelper(object):
         tmp_today=datetime.date.today()
         today="1000-{m}-{d}".format( m = tmp_today.month , d =tmp_today.day )
         future_date=str(datetime.date.today()+datetime.timedelta(days=3))
-        query='SELECT * FROM records WHERE birthday BETWEEN "{td}" AND "{fd}"'.format(td = today, fd = future_date)
+        query="""select *, julianday(strftime('%Y', 'now')||strftime('-%m-%d', birthday))-julianday('now') as bd  from records where bd between 0 and 3"""
         res=self._exec(query)
+        logging.debug("check birthday db query result {res}".format(res = res))
         if res == []:
             print "no birthdays next 3 days "
             return None
@@ -110,6 +111,8 @@ class DbHelper(object):
                 try:
                     tmp=datetime.datetime.strptime(rec.birthday, "%Y-%m-%d").date()
                     diff=tmp.day - datetime.date.today().day
+                    bd=None
+                    print diff
                     if diff>0:
                         bd="at {d} day of {m} month, {n} days left".format(d = tmp.day,m = tmp.month, n = diff)
                     if diff == 0:

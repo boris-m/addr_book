@@ -1,16 +1,30 @@
 import logging
 import time
+import datetime
+import sys
 import db_helper
 from messages import Messages
+import re
 
 class Check(object):
     def phone_number(self, num):
 
 
         return True
-    def check_date_format(self, date):
 
-        return True
+    def check_date_format(self, date):
+        try:
+            tmp=re.findall(r'[0-9]',date)
+            if len(tmp) != 8:
+                return False
+            data=tmp[0]+tmp[1]+tmp[2]+tmp[3]+"-"+tmp[4]+tmp[5]+"-"+tmp[6]+tmp[7]
+            date=datetime.datetime.strptime(data,"%Y-%m-%d").date().isoformat()
+            return date
+        except Exception as e:
+            logging.error("can not check date: {e}".format(e = e))
+            return False
+
+
 
 class Record(object):
     def __init__(self):
@@ -93,15 +107,17 @@ class Application(object):
             print "you already have such record,use another first name"
             return None
 
-        if self.__helper.check_date_format(record.birthday) != True:
+        record.birthday = self.__helper.check_date_format(record.birthday)
+        if  record.birthday == False:
             print "you input wrong data, invalid birthday, please try again "
             user_input = raw_input("skip birthday? (type yes or no: ")
             if user_input is "yes":
                 record.birthday=None
             else:
-                user_input = raw_input("input  birthday  date using YYYY-MM-DD format (for example 1974-03-27)")
-                if self.__helper.check_date_format(record.birthday) != True:
-                    print "incorrect input"
+                user_input = raw_input("input  birthday  date using YYYY-MM-DD format (for example '1974-03-27')")
+                record.birthday = self.__helper.check_date_format(record.birthday)
+                if  record.birthday == False:
+                    print "still incorrect input,try again"
                     return None
 
         if self.__helper.phone_number(record.phone_number) != True:
@@ -162,6 +178,9 @@ class Application(object):
             self.find_record()
         elif command == "show_all" or command == "s":
             self.select_all()
+        elif command == "exit" or command == "e":
+            sys.exit(0)
+
         else:
             print "no such command ({cmd})\r\n{man}".format(cmd=command, man=Messages.intro)
 
@@ -200,10 +219,11 @@ def tmp():
     rec.birthday="2003-09-14"
     rec.phone_number="12341243"
     rec.legal_phone_number=0
-    A.db.find_record("tmp")
+    #A.db.find_record("tmp")
+    #
     #A.run()
     #print dir(A)
-    A.db.is_record_duplicate(rec)
+    #A.db.is_record_duplicate(rec)
     #A._db_find_record_by_id(5)
     A.db.select_all()
     #A.db_conection.close()
