@@ -105,7 +105,7 @@ class Application(object):
         if len(record.last_name)<2:
             print "you input wrong data, last name too short, please try again "
             return None
-        if self.db.is_record_duplicate(record):
+        if self.db.__is_record_duplicate(record):
             print "you already have such record,use another first name"
             return None
 
@@ -225,7 +225,7 @@ def tmp():
     #
     #A.run()
     #print dir(A)
-    #A.db.is_record_duplicate(rec)
+    #A.db.__is_record_duplicate(rec)
     #A._db_find_record_by_id(5)
     A.db.select_all()
     #A.db_conection.close()
