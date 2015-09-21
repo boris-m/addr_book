@@ -74,8 +74,8 @@ class Record(object):
 class Application(object):
 
     def __init__(self):
-        self.db = db_helper.DbHelper()
-        self.stop_flag = True
+        self.__db = db_helper.DbHelper()
+        self.__stop_flag = True
         self.__helper=Check()
         logging.basicConfig(level = logging.DEBUG)
 
@@ -103,7 +103,7 @@ class Application(object):
         if len(record.last_name)<2:
             print "you input wrong data, last name too short, please try again "
             return None
-        if self.db.is_record_duplicate(record):
+        if self.__db.is_record_duplicate(record):
             print "you already have such record,use another first name"
             return None
 
@@ -125,13 +125,13 @@ class Application(object):
                                    " (type yes to save, or no to go to command menu".format(ph = record.phone_number))
             if user_input == "yes":
                 record.legal_phone_number=0
-                self.db.add_record(record)
+                self.__db.add_record(record)
                 return None
             else:
                 return None
 
         record.legal_phone_number=0
-        self.db.add_record(record)
+        self.__db.add_record(record)
         print "record sucessfully aded"
 
     def find_record(self):
@@ -140,10 +140,10 @@ class Application(object):
         user_input = raw_input("input record parameters, please: ")
         query = user_input.strip("     \t\n\r")
         logging.debug("search query is {q}".format(q = query))
-        return self.db.find_record(query)
+        return self.__db.find_record(query)
 
     def select_all(self):
-        self.db.select_all()
+        self.__db.select_all()
 
     def remove_record(self):
         print Messages.remove_record_first
@@ -154,14 +154,14 @@ class Application(object):
         if id not in records_id:
             print "no such id in find records"
             return None
-        rec_to_delete=self.db.find_record_by_id(id)
+        rec_to_delete=self.__db.find_record_by_id(id)
 
         if rec_to_delete != None:
             rec_to_delete.print_record()
             print "are you really want to delete this record?"
             user_input = raw_input("please input id of record should be deleted (input yes or no)" )
             if user_input == "yes":
-                self.db.remove_record(id)
+                self.__db.remove_record(id)
                 print "record deleted"
         else:
             print "no such record"
@@ -184,29 +184,38 @@ class Application(object):
         else:
             print "no such command ({cmd})\r\n{man}".format(cmd=command, man=Messages.intro)
 
-    def loop(self):
+    def check_bday(self):
+        print(self.__db.check_birthdays())
+
+    def _loop(self):
         user_input = raw_input("input command please: ")
         self.execute_task(user_input)
         time.sleep(1)
 
-    def run(self):
+    def __get_cmd_list(self):
+        list=dir(self)
+        for i in list:
+            if not i.startswith("_"):
+                print i
+
+    def _run(self):
         try:
-            print Messages.intro
-            self.db.check_birthdays()
-            while self.stop_flag:
-                self.loop()
+            self.__get_cmd_list()
+            print self.__dict__
+            while self.__stop_flag:
+                self._loop()
         except Exception,e:
             print "error in program: {exc}".format(exc = e)
         finally:
             try:
                 logging.error("destroing DB connection")
-                self.db.db_connection.close()
+                self.__db.db_connection.close()
             except Exception,e:
                 print "probably connection already closed"
 
 def main():
     a=Application()
-    a.run()
+    a._run()
 
 def tmp():
     A=Application()
@@ -223,9 +232,9 @@ def tmp():
     #
     #A.run()
     #print dir(A)
-    #A.db.is_record_duplicate(rec)
+    #A.db.__is_record_duplicate(rec)
     #A._db_find_record_by_id(5)
-    A.db.select_all()
+    A.__db.select_all()
     #A.db_conection.close()
 
 if __name__ == "__main__":

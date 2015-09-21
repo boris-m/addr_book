@@ -22,5 +22,5 @@ class AppTest(unittest.TestCase):
         assert self.app.db_conection is not None
 
     def test_find_record_not_empty(self):
-        assert self.app.db.find_record("tmp") is not None
+        assert self.app.__db.find_record("tmp") is not None
 
